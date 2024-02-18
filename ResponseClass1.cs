@@ -8,7 +8,7 @@ namespace loadshedding
 {
     public class ResponseClass1
     {
-        
+
     }
     public class Rootobject
     {
@@ -53,6 +53,46 @@ namespace loadshedding
     {
         public Allowance allowance { get; set; }
     }
+
+    public class StatusClass
+    {
+        public Status status { get; set; }
+    }
+
+    public class Status
+    {
+        public Capetown capetown { get; set; }
+        public Eskom eskom { get; set; }
+    }
+
+    public class Capetown
+    {
+        public string name { get; set; }
+        public Next_Stages[] next_stages { get; set; }
+        public string stage { get; set; }
+        public DateTime stage_updated { get; set; }
+    }
+
+    public class Next_Stages
+    {
+        public string stage { get; set; }
+        public DateTime stage_start_timestamp { get; set; }
+    }
+
+    public class Eskom
+    {
+        public string name { get; set; }
+        public Next_Stages1[] next_stages { get; set; }
+        public string stage { get; set; }
+        public DateTime stage_updated { get; set; }
+    }
+
+    public class Next_Stages1
+    {
+        public string stage { get; set; }
+        public DateTime stage_start_timestamp { get; set; }
+    }
+
 
 
 
