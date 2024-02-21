@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace loadshedding
@@ -14,79 +17,145 @@ namespace loadshedding
         {
             while (true)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
+                //Console.ForegroundColor = ConsoleColor.Red;
                 Console.Write("Welcome.\n" +
                     "1. Check Allowance\n" +
                     "2. Check Todays Schedule\n" +
                     "3. Load shedding stages\n" +
+                    "4. Auto Shutdown\n" +
                     "Choice: ");
-                int option = int.Parse(Console.ReadLine());
-                switch (option)
+                string option = Console.ReadLine();
+                if (string.IsNullOrEmpty(option))
+                {
+                    option = "0";
+                }
+                switch (int.Parse(option))
                 {
                     case 1:
                         await CheckAllowance();
-                    break;
+                        break;
                     case 2:
                         await Today();
-                    break;
+                        break;
                     case 3:
                         await CheckStage();
-                    break;
+                        break;
+                    case 4:
+                        
+                        Thread backgroundThread = new Thread(new ThreadStart(Shutdown1));
+                        backgroundThread.Start();
+                        Console.Write("Welcome.\n" +
+                            "1. Check Allowance\n" +
+                            "2. Check Todays Schedule\n" +
+                            "3. Load shedding stages\n" +
+                            "4. Auto Shutdown\n" +
+                            "Choice: ");
+                        break;
                     default:
-                        Console.WriteLine("Invalid Selection");
+                        Console.WriteLine("\nInvalid Selection\n");
                         break;
                 }
-                //await Today();
-                //Console.ReadLine();
             }
             
+            
+        }
+        public static void Shutdown1()
+        {
+            var future = new DateTime(2024, 2, 21, 15, 40, 0);
+            var now = DateTime.Now;
+            var diff = future - now;
+            var seconds = (int)(diff.TotalSeconds - 120) / 3;
+            var span = new TimeSpan(0, 0, seconds);
+
+            //if negative kill process
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"\n\n {diff.TotalMinutes:f0} Minutes left");
+            Thread.Sleep(span);
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            diff = diff.Subtract(span);
+            Console.WriteLine($"\n\n {diff.TotalMinutes:f0} Minutes left");
+            Thread.Sleep(span);
+
+            Console.ForegroundColor = ConsoleColor.Red;
+            diff = diff.Subtract(span);
+            Console.WriteLine($"\n {diff.TotalMinutes:f0} Minutes left");
+            Thread.Sleep(span);
+
+            Console.WriteLine("Shutting down in...\n");
+            Thread.Sleep(1000);
+            Console.WriteLine("3..");
+            Thread.Sleep(1000);
+            Console.WriteLine("2..");
+            Thread.Sleep(1000);
+            Console.WriteLine("1..");
+            Thread.Sleep(1000);
+            //Process.Start("shutdown", "/s /t 0");
+            //shutdown the system
+            Console.WriteLine("shutdown the system".ToUpperInvariant());
             
         }
         public static async Task CheckStage()
         {
-            
-            string responseBody = await GetData("https://developer.sepush.co.za/business/2.0/status");
-            StatusClass message = JsonSerializer.Deserialize<StatusClass>(responseBody);
-            if (message == null)
-            {
-                Console.WriteLine("Failed");
-            }
-            else
-            {
-                Console.WriteLine($"Current And Future Stages\n" +
-                    $"Current Stage: {message.status.eskom.stage} Last Updated: {message.status.eskom.stage_updated.ToShortDateString()} {message.status.eskom.stage_updated.ToShortTimeString()}\n");
 
-                Console.WriteLine("\nFuture stages implantations\n");
-                if (message.status.eskom.next_stages.Length == 0)
+            try
+            {
+                string responseBody = await GetData("https://developer.sepush.co.za/business/2.0/status");
+                StatusClass message = JsonSerializer.Deserialize<StatusClass>(responseBody);
+                if (message == null)
                 {
-                    Console.WriteLine("No future updates");
-
+                    Console.WriteLine("Failed");
                 }
                 else
                 {
+                    Console.WriteLine($"Current And Future Stages\n" +
+                        $"Current Stage: {message.status.eskom.stage} Last Updated: {message.status.eskom.stage_updated.ToShortDateString()} {message.status.eskom.stage_updated.ToShortTimeString()}\n");
 
-                    foreach (var item in message.status.eskom.next_stages)
+                    Console.WriteLine("\nFuture stages implantations\n");
+                    if (message.status.eskom.next_stages.Length == 0)
+                    {
+                        Console.WriteLine("No future updates");
+
+                    }
+                    else
                     {
 
-                        Console.WriteLine($"Stage: {item.stage}\nStart Time: {item.stage_start_timestamp.ToShortDateString()} {item.stage_start_timestamp.ToShortTimeString()}\n\n");
+                        foreach (var item in message.status.eskom.next_stages)
+                        {
+
+                            Console.WriteLine($"Stage: {item.stage}\nStart Time: {item.stage_start_timestamp.ToShortDateString()} {item.stage_start_timestamp.ToShortTimeString()}\n\n");
+                        }
                     }
+
                 }
-                
             }
+            catch
+            {
+
+            }
+            
         }
         public static async Task CheckAllowance()
         {
+            try
+            {
+                string responseBody = await GetData("https://developer.sepush.co.za/business/2.0/api_allowance");
+                Root message = JsonSerializer.Deserialize<Root>(responseBody);
+                if (message == null)
+                {
+                    Console.WriteLine("Failed");
+                }
+                else
+                {
+                    Console.WriteLine($"\nUsed: {message.allowance.count}\nLimit: {message.allowance.limit}\nType: {message.allowance.type}\n");
+                }
+            }
+            catch
+            {
+
+                
+            }
             
-            string responseBody = await GetData("https://developer.sepush.co.za/business/2.0/api_allowance");
-            Root message = JsonSerializer.Deserialize<Root>(responseBody);
-            if (message == null)
-            {
-                Console.WriteLine("Failed");
-            }
-            else
-            {
-                Console.WriteLine($"Used: {message.allowance.count}\nLimit: {message.allowance.limit}\nType: {message.allowance.type}");
-            }
         }
         public static async Task Today()
         {
@@ -111,15 +180,25 @@ namespace loadshedding
                         $"End Time: {item.end:t}\n\n");
                     x++;
                 }
+                string d;
+                if (message.events[0].start.Date == DateTime.Now.Date)
+                {
+                    d = "TODAY";
+                    Console.ForegroundColor = ConsoleColor.Red;
+                }
+                else
+                    d = "FUTURE";
+
 
                 Console.WriteLine($"================ NOTICE !!! =====================\n" +
                     $"== Stage : {message.events[0].note}\t\t\t\t=\n" +
-                        $"== Date: {message.events[0].start:dddd d MMMM yyyy}\t\t=\n" +
+                        $"== Date: {message.events[0].start:dddd d MMMM yyyy} ({d})\t=\n" +
                         $"== Start Time: {message.events[0].start:t}\t\t\t\t=\n" +
                         $"== End Time: {message.events[0].end:t}\t\t\t\t=\n" +
                         $"================ NOTICE !!! =====================\n\n");
                 var diff = message.events[0].start - DateTime.Now;
                 Console.WriteLine($" Total Minutes till LOAD SHEDDING: {diff.TotalMinutes:f0}");
+                Console.ForegroundColor = ConsoleColor.White;
             }
             if (false)
             {
@@ -181,42 +260,75 @@ namespace loadshedding
                     }
                 }
             }
-           
+
         }
+        static string Todaydata = "";
+
         public static async Task Shutdown(Rootobject rootobject)
         {
-            string i = await GetData("https://developer.sepush.co.za/business/2.0/area?id=nelsonmandelabay-5-summerstranduptomarinehotelarea8");
-            Rootobject message = JsonSerializer.Deserialize<Rootobject>(i);
-            if (message.events[0].start.Date == DateTime.Now.Date)
+            
+            try
             {
-                Console.WriteLine($"================ NOTICE !!! =====================\n" +
-                    $"== Stage : {message.events[0].note}\t\t\t\t=\n" +
-                        $"== Date: {message.events[0].start:dddd d MMMM yyyy}\t\t=\n" +
-                        $"== Start Time: {message.events[0].start:t}\t\t\t\t=\n" +
-                        $"== End Time: {message.events[0].end:t}\t\t\t\t=\n" +
-                        $"================ NOTICE !!! =====================\n\n");
-                var diff = message.events[0].start - DateTime.Now;
-                switch (diff.TotalMinutes)
+                if (string.IsNullOrEmpty(Todaydata))
                 {
-                    case 30:
+                    Todaydata = await GetData("https://developer.sepush.co.za/business/2.0/area?id=nelsonmandelabay-5-summerstranduptomarinehotelarea8");
+                }
+                Rootobject message = JsonSerializer.Deserialize<Rootobject>(Todaydata);
+                if (message.events[0].start.Date == DateTime.Now.Date)
+                {
+                    //Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"================ NOTICE !!! =====================\n" +
+                        $"== Stage : {message.events[0].note}\t\t\t\t=\n" +
+                            $"== Date: {message.events[0].start:dddd d MMMM yyyy}\t\t=\n" +
+                            $"== Start Time: {message.events[0].start:t}\t\t\t\t=\n" +
+                            $"== End Time: {message.events[0].end:t}\t\t\t\t=\n" +
+                            $"================ NOTICE !!! =====================\n\n");
+                    var diff = message.events[0].start - DateTime.Now;
+                    Console.WriteLine($" Total Minutes till LOAD SHEDDING: {diff.TotalMinutes:f0}");
+                    var s = (int)diff.TotalSeconds / 3;
+                    Thread.Sleep(s);
+
+                    if (diff.TotalMinutes >= 30)
+                    {
                         Console.Clear();
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("");
+                        Console.WriteLine("+30 Minutes Left");
+                        Thread.Sleep(10000);
 
-                        break;
-                    case 20:
+                    }
+                    else if (diff.TotalMinutes <= 20)
+                    {
                         Console.Clear();
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        break;
-                    case 10:
+                        Console.WriteLine("20 Minutes Left");
+                    }
+                    else if (diff.TotalMinutes <= 10)
+                    {
                         Console.Clear();
                         Console.ForegroundColor = ConsoleColor.Red;
-                        break;
-                    default:
-                        Console.ForegroundColor = ConsoleColor.Black;
-                    break;
+                        Console.WriteLine("30 Minutes Left");
+
+                        if (diff.TotalMinutes <= 3)
+                        {
+                            Console.WriteLine("Shutting down in...\n");
+                            Thread.Sleep(1000);
+                            Console.WriteLine("3..");
+                            Thread.Sleep(1000);
+                            Console.WriteLine("2..");
+                            Thread.Sleep(1000);
+                            Console.WriteLine("1..");
+                            Thread.Sleep(1000);
+                            //Process.Start("shutdown", "/s /t 0");
+                            //shutdown the system
+                        }
+                    }
                 }
             }
+            catch
+            {
+
+            }
+            
         }
         public static async Task<string> GetData(string apiUrl)
         {
