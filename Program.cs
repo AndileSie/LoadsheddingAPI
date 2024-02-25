@@ -314,7 +314,7 @@ namespace loadshedding
             {
                 try
                 {
-                    string token = "2CFFCF5B-FFDD4CD8-B3EC867E-F5CECE38";
+                    string token = "";
                     client.DefaultRequestHeaders.Add("token", token);
 
                     HttpResponseMessage response = await client.GetAsync(apiUrl);
