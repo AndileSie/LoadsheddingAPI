@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Principal;
@@ -17,12 +18,13 @@ namespace loadshedding
         {
             while (true)
             {
-                //Console.ForegroundColor = ConsoleColor.Red;
+                await StartUp();
                 Console.Write("Welcome.\n" +
                     "1. Check Allowance\n" +
                     "2. Check Todays Schedule\n" +
                     "3. Load shedding stages\n" +
                     "4. Auto Shutdown\n" +
+                    "5. Search Area\n" +
                     "Choice: ");
                 string option = Console.ReadLine();
                 if (string.IsNullOrEmpty(option))
@@ -44,22 +46,96 @@ namespace loadshedding
                         
                         Thread backgroundThread = new Thread(new ThreadStart(Shutdown));
                         backgroundThread.Start();
-                        //Console.Write("Welcome.\n" +
-                        //    "1. Check Allowance\n" +
-                        //    "2. Check Todays Schedule\n" +
-                        //    "3. Load shedding stages\n" +
-                        //    "4. Auto Shutdown\n" +
-                        //    "Choice: ");
+                        break;
+                    case 5:
+                        await Search();
                         break;
                     default:
                         Console.WriteLine("\nInvalid Selection\n");
                         break;
                 }
             }
-            
-            
+
+
         }
-        
+        static string defaultFile = "default.txt";
+        static string loctionID;
+        public static async Task StartUp()
+        {
+            try
+            {
+                StreamReader streamReader = new StreamReader(defaultFile);
+                string[] line = streamReader.ReadLine().Split('~');
+                loctionID = line[0];
+                Console.WriteLine($"\nCurrent location is set to:\n Name: {line[1]}\n Region: {line[2]}\n");
+                streamReader.Close();
+            }
+            catch
+            {
+                Console.WriteLine("Default location is not set. Please set a location");
+                await Search();
+            }
+        }
+        public static void WriteToFile(Area area)
+        {
+            StreamWriter writer = new StreamWriter(defaultFile);
+            writer.WriteLine($"{area.id}~{area.name}~{area.region}");
+            writer.Close();
+        }
+        public static async Task Search()
+        {
+
+            try
+            {
+                Console.Write("Enter area name: ");
+                string area = Console.ReadLine();
+                string responseBody = await GetData($"https://developer.sepush.co.za/business/2.0/areas_search?text={area}");
+                Location message = JsonSerializer.Deserialize<Location>(responseBody);
+                Console.WriteLine("\nSelect area: ");
+
+                for (int i = 0; i < message.areas.Length; i++)
+                {
+                    Console.WriteLine($"{i}. {message.areas[i].name} {message.areas[i].region}\n");
+
+                }
+                while (true)
+                {
+                    Console.Write("Enter selected area number: ");
+                    string choice = Console.ReadLine();
+                    if (!string.IsNullOrEmpty(choice) && int.TryParse(choice, out int i))
+                    {
+                        try
+                        {
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            Console.WriteLine($"You have selected:\n Name: {message.areas[i].name}\n Region: {message.areas[i].region}\n");
+                            Console.ForegroundColor = ConsoleColor.White;
+                            WriteToFile(message.areas[i]);
+                            break;
+                        }
+                        catch
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("\nInvalid Selection\n");
+                            Console.ForegroundColor = ConsoleColor.White;
+                        }
+                        
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("\nInvalid Selection\n");
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                }
+
+
+            }
+            catch
+            {
+                PrintError("Searching For Area");
+            }
+
+        }
         public static async Task CheckStage()
         {
 
@@ -89,7 +165,7 @@ namespace loadshedding
             }
             catch
             {
-                Console.WriteLine("\nNetwork Error. At method 'Checking Stage'\n");
+                PrintError("Check Stage");
             }
             
         }
@@ -104,7 +180,7 @@ namespace loadshedding
             try
             {
                 string responseBody = await GetData("https://developer.sepush.co.za/business/2.0/api_allowance");
-                Root message = JsonSerializer.Deserialize<Root>(responseBody);
+                AllowanceClass message = JsonSerializer.Deserialize<AllowanceClass>(responseBody);
                 Console.WriteLine($"\nUsed: {message.allowance.count}\nLimit: {message.allowance.limit}\nType: {message.allowance.type}\n");
             }
             catch
@@ -119,9 +195,9 @@ namespace loadshedding
             {
                 if (string.IsNullOrEmpty(Todaydata))
                 {
-                    Todaydata = await GetData("https://developer.sepush.co.za/business/2.0/area?id=nelsonmandelabay-5-summerstranduptomarinehotelarea8");
+                    Todaydata = await GetData($"https://developer.sepush.co.za/business/2.0/area?id={loctionID}");
                 }
-                Rootobject message = JsonSerializer.Deserialize<Rootobject>(Todaydata);
+                LoadsheddingEvents message = JsonSerializer.Deserialize<LoadsheddingEvents>(Todaydata);
                 Console.WriteLine($"Load shedding for: {message.info.name} \n {message.info.region}\n Amount of Events: {message.events.Length}\n\n" +
                     $"");
                 int x = 1;
@@ -167,67 +243,6 @@ namespace loadshedding
                 PrintError("Today");
             }
 
-            if (false)
-            {
-                using (HttpClient client = new HttpClient())
-                {
-                    try
-                    {
-                        // Define the API endpoint URL
-                        string apiUrl = "https://developer.sepush.co.za/business/2.0/area?id=nelsonmandelabay-5-summerstranduptomarinehotelarea8";
-                        //string apiUrl1 = "https://developer.sepush.co.za/business/2.0/areas_nearby?lat=-34.0010&lon=25.6715";
-                        //var s = "nelsonmandelabay-5-summerstranduptomarinehotelarea8";
-                        // Add your token key to the request headers
-                        //string tokenKey = "YourTokenKeyHere";
-                        client.DefaultRequestHeaders.Add("token", "2CFFCF5B-FFDD4CD8-B3EC867E-F5CECE38");
-
-                        // Make a GET request to the API
-                        HttpResponseMessage response = await client.GetAsync(apiUrl);
-
-                        // Ensure the response is successful
-                        response.EnsureSuccessStatusCode();
-
-                        // Read the response content as a JSON string
-                        string responseBody = await response.Content.ReadAsStringAsync();
-                        Rootobject message1 = JsonSerializer.Deserialize<Rootobject>(responseBody);
-                        if (message1 == null)
-                        {
-                            Console.WriteLine("Failed");
-
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Load shedding for: {message1.info.name} \n {message1.info.region}\n Amount of Events: {message1.events.Length}\n\n" +
-                                $"");
-                            int x = 1;
-                            foreach (var item in message1.events)
-                            {
-                                Console.WriteLine($"Event: {x}\nStage : {item.note}\n" +
-                                    $"Date: {item.start.ToString("dddd d MMMM yyyy")}\n" +
-                                    $"Start Time: {item.start.ToString("t")}\n\n" +
-                                    $"End Time: {item.end.ToString("t")}\n\n");
-                                x++;
-                            }
-
-
-                            //Console.WriteLine($"Source: {message.schedule.source}");
-
-                            //Console.WriteLine(responseBody);
-
-
-
-                        }
-                        // Output the JSON response
-                        //Console.WriteLine(responseBody);
-                    }
-                    catch (HttpRequestException ex)
-                    {
-                        // Handle any errors with the API request
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
-            }
-
         }
         static string Todaydata = "";
         public static async void Shutdown()
@@ -238,7 +253,7 @@ namespace loadshedding
                 {
                     Todaydata = await GetData("https://developer.sepush.co.za/business/2.0/area?id=nelsonmandelabay-5-summerstranduptomarinehotelarea8");
                 }
-                Rootobject message = JsonSerializer.Deserialize<Rootobject>(Todaydata);
+                LoadsheddingEvents message = JsonSerializer.Deserialize<LoadsheddingEvents>(Todaydata);
                 if (message.events[0].start.Date == DateTime.Now.Date)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -255,31 +270,34 @@ namespace loadshedding
                     var seconds = (int)(diff.TotalSeconds - 120) / 3;
                     var span = new TimeSpan(0, 0, seconds);
 
-                    //if negative kill process
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"\n {diff.TotalMinutes:f0} Minutes left\n");
-                    Thread.Sleep(span);
-
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    diff = diff.Subtract(span);
-                    Console.WriteLine($"\n\n {diff.TotalMinutes:f0} Minutes left");
-                    Thread.Sleep(span);
-
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    diff = diff.Subtract(span);
-                    Console.WriteLine($"\n {diff.TotalMinutes:f0} Minutes left");
-                    Thread.Sleep(span);
-
-                    Console.WriteLine("Shutting down in...\n");
-                    for (int i = 3; i >= 1 ; i--)
+                    if (diff.TotalSeconds > 0)
                     {
-                        Console.WriteLine($"{i}..");
-                        Thread.Sleep(1000);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"\n {diff.TotalMinutes:f0} Minutes left\n");
+                        Thread.Sleep(span);
+
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        diff = diff.Subtract(span);
+                        Console.WriteLine($"\n\n {diff.TotalMinutes:f0} Minutes left");
+                        Thread.Sleep(span);
+
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        diff = diff.Subtract(span);
+                        Console.WriteLine($"\n {diff.TotalMinutes:f0} Minutes left");
+                        Thread.Sleep(span);
+
+                        Console.WriteLine("Shutting down in...\n");
+                        for (int i = 3; i >= 1; i--)
+                        {
+                            Console.WriteLine($"{i}..");
+                            Thread.Sleep(1000);
+                        }
+
+                        Process.Start("shutdown", "/s /t 2");
+                        //shutdown the system
+                        Console.WriteLine("shutdown the system".ToUpperInvariant());
                     }
                     
-                    Process.Start("shutdown", "/s /t 2");
-                    //shutdown the system
-                    Console.WriteLine("shutdown the system".ToUpperInvariant());
                 }
             }
             catch
@@ -289,79 +307,15 @@ namespace loadshedding
             
 
         }
-        public static async Task Shutdown1(Rootobject rootobject)
-        {
-            //useless at the momemnt
-            try
-            {
-                if (string.IsNullOrEmpty(Todaydata))
-                {
-                    Todaydata = await GetData("https://developer.sepush.co.za/business/2.0/area?id=nelsonmandelabay-5-summerstranduptomarinehotelarea8");
-                }
-                Rootobject message = JsonSerializer.Deserialize<Rootobject>(Todaydata);
-                if (message.events[0].start.Date == DateTime.Now.Date)
-                {
-                    Console.WriteLine($"================ NOTICE !!! =====================\n" +
-                        $"== Stage : {message.events[0].note}\t\t\t\t=\n" +
-                            $"== Date: {message.events[0].start:dddd d MMMM yyyy}\t\t=\n" +
-                            $"== Start Time: {message.events[0].start:t}\t\t\t\t=\n" +
-                            $"== End Time: {message.events[0].end:t}\t\t\t\t=\n" +
-                            $"================ NOTICE !!! =====================\n\n");
-                    var diff = message.events[0].start - DateTime.Now;
-                    Console.WriteLine($" Total Minutes till LOAD SHEDDING: {diff.TotalMinutes:f0}");
-                    var s = (int)diff.TotalSeconds / 3;
-                    Thread.Sleep(s);
-
-                    if (diff.TotalMinutes >= 30)
-                    {
-                        Console.Clear();
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("+30 Minutes Left");
-                        Thread.Sleep(10000);
-
-                    }
-                    else if (diff.TotalMinutes <= 20)
-                    {
-                        Console.Clear();
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("20 Minutes Left");
-                    }
-                    else if (diff.TotalMinutes <= 10)
-                    {
-                        Console.Clear();
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("30 Minutes Left");
-
-                        if (diff.TotalMinutes <= 3)
-                        {
-                            Console.WriteLine("Shutting down in...\n");
-                            Thread.Sleep(1000);
-                            Console.WriteLine("3..");
-                            Thread.Sleep(1000);
-                            Console.WriteLine("2..");
-                            Thread.Sleep(1000);
-                            Console.WriteLine("1..");
-                            Thread.Sleep(1000);
-                            //Process.Start("shutdown", "/s /t 0");
-                            //shutdown the system
-                        }
-                    }
-                }
-            }
-            catch
-            {
-
-            }
-            
-        }
+        
         public static async Task<string> GetData(string apiUrl)
         {
             using (HttpClient client = new HttpClient())
             {
                 try
                 {
-
-                    client.DefaultRequestHeaders.Add("token", "2CFFCF5B-FFDD4CD8-B3EC867E-F5CECE38");
+                    string token = "2CFFCF5B-FFDD4CD8-B3EC867E-F5CECE38";
+                    client.DefaultRequestHeaders.Add("token", token);
 
                     HttpResponseMessage response = await client.GetAsync(apiUrl);
 

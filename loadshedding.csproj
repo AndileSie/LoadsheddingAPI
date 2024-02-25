@@ -73,7 +73,6 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ResponseClass1.cs" />
     <Compile Include="ResponseClass.cs" />
   </ItemGroup>
   <ItemGroup>
