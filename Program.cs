@@ -314,6 +314,12 @@ namespace loadshedding
             {
                 try
                 {
+                    //documentation on how to use the api
+                    //https://documenter.getpostman.com/view/1296288/UzQuNk3E
+
+                    //how to get the token key
+                    //https://eskomsepush.gumroad.com/l/api
+
                     string token = "";
                     client.DefaultRequestHeaders.Add("token", token);
 
