@@ -10,6 +10,22 @@ namespace loadshedding
     {
 
     }
+
+    public class Topics
+    {
+        public Topic[] topics { get; set; }
+    }
+
+    public class Topic
+    {
+        public DateTime active { get; set; }
+        public string body { get; set; }
+        public string category { get; set; }
+        public float distance { get; set; }
+        public int followers { get; set; }
+        public DateTime timestamp { get; set; }
+    }
+
     public class Location
     {
         public Area[] areas { get; set; }

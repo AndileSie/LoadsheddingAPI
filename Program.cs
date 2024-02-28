@@ -25,6 +25,7 @@ namespace loadshedding
                     "3. Load shedding stages\n" +
                     "4. Auto Shutdown\n" +
                     "5. Search Area\n" +
+                    "6. News around\n" +
                     "Choice: ");
                 string option = Console.ReadLine();
                 if (string.IsNullOrEmpty(option))
@@ -49,6 +50,9 @@ namespace loadshedding
                         break;
                     case 5:
                         await Search();
+                        break;
+                    case 6:
+                        await Topics();
                         break;
                     default:
                         Console.WriteLine("\nInvalid Selection\n");
@@ -136,6 +140,24 @@ namespace loadshedding
             }
 
         }
+        public static async Task Topics()
+        {
+            string lon = "25.670687";
+            string lat = "-34.001678";
+            string responseBody = await GetData($"https://developer.sepush.co.za/business/2.0/topics_nearby?lat={lat}&lon={lon}");
+            var message = JsonSerializer.Deserialize<Topics>(responseBody);
+            Console.WriteLine($"Topics for {lat}, {lon}\n");
+            for (int i = 0; i < message.topics.Length; i++)
+            {
+                Console.WriteLine($"Event {i + 1}\n" +
+                    $"Category: {message.topics[i].category}\n" +
+                    $"Text: {message.topics[i].body}\n" +
+                    $"Distance: {message.topics[i].distance}\n" +
+                    $"Time stamp: {message.topics[i].timestamp.ToShortDateString()} {message.topics[i].timestamp.ToShortTimeString()}\n\n");
+            }
+            Console.WriteLine("End of Topics");
+
+        }
         public static async Task CheckStage()
         {
 
@@ -218,7 +240,11 @@ namespace loadshedding
                         Console.ForegroundColor = ConsoleColor.Red;
                     }
                     else
+                    {
                         d = "FUTURE";
+                        Console.ForegroundColor = ConsoleColor.Green;
+                    }
+                        
 
 
                     Console.WriteLine($"================ NOTICE !!! =====================\n" +
