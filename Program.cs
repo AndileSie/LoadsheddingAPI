@@ -142,20 +142,31 @@ namespace loadshedding
         }
         public static async Task Topics()
         {
-            string lon = "25.670687";
-            string lat = "-34.001678";
-            string responseBody = await GetData($"https://developer.sepush.co.za/business/2.0/topics_nearby?lat={lat}&lon={lon}");
-            var message = JsonSerializer.Deserialize<Topics>(responseBody);
-            Console.WriteLine($"Topics for {lat}, {lon}\n");
-            for (int i = 0; i < message.topics.Length; i++)
+            try
             {
-                Console.WriteLine($"Event {i + 1}\n" +
-                    $"Category: {message.topics[i].category}\n" +
-                    $"Text: {message.topics[i].body}\n" +
-                    $"Distance: {message.topics[i].distance}\n" +
-                    $"Time stamp: {message.topics[i].timestamp.ToShortDateString()} {message.topics[i].timestamp.ToShortTimeString()}\n\n");
+                string lon = "25.670687";
+                string lat = "-34.001678";
+                string responseBody = await GetData($"https://developer.sepush.co.za/business/2.0/topics_nearby?lat={lat}&lon={lon}");
+                var message = JsonSerializer.Deserialize<Topics>(responseBody);
+                Console.WriteLine($"Topics for {lat}, {lon}\n");
+                for (int i = 0; i < message.topics.Length; i++)
+                {
+                    if (message.topics[i].timestamp.Date == DateTime.Now.Date)
+                        Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Event {i + 1}\n" +
+                        $"Category: {message.topics[i].category}\n" +
+                        $"Text: {message.topics[i].body}\n" +
+                        $"Distance: {message.topics[i].distance}\n" +
+                        $"Time stamp: {message.topics[i].timestamp.ToShortDateString()} {message.topics[i].timestamp.ToShortTimeString()}\n\n");
+                    Console.ForegroundColor = ConsoleColor.White;
+                }
+                Console.WriteLine("End of Topics");
             }
-            Console.WriteLine("End of Topics");
+            catch
+            {
+                PrintError("Topics");
+            }
+            
 
         }
         public static async Task CheckStage()
@@ -277,7 +288,7 @@ namespace loadshedding
             {
                 if (string.IsNullOrEmpty(Todaydata))
                 {
-                    Todaydata = await GetData("https://developer.sepush.co.za/business/2.0/area?id=nelsonmandelabay-5-summerstranduptomarinehotelarea8");
+                    Todaydata = await GetData($"https://developer.sepush.co.za/business/2.0/area?id={loctionID}");
                 }
                 LoadsheddingEvents message = JsonSerializer.Deserialize<LoadsheddingEvents>(Todaydata);
                 if (message.events[0].start.Date == DateTime.Now.Date)
