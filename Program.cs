@@ -32,32 +32,40 @@ namespace loadshedding
                 {
                     option = "0";
                 }
-                switch (int.Parse(option))
+                try
                 {
-                    case 1:
-                        await CheckAllowance();
-                        break;
-                    case 2:
-                        await Today();
-                        break;
-                    case 3:
-                        await CheckStage();
-                        break;
-                    case 4:
-                        
-                        Thread backgroundThread = new Thread(new ThreadStart(Shutdown));
-                        backgroundThread.Start();
-                        break;
-                    case 5:
-                        await Search();
-                        break;
-                    case 6:
-                        await Topics();
-                        break;
-                    default:
-                        Console.WriteLine("\nInvalid Selection\n");
-                        break;
+                    switch (int.Parse(option))
+                    {
+                        case 1:
+                            await CheckAllowance();
+                            break;
+                        case 2:
+                            await Today();
+                            break;
+                        case 3:
+                            await CheckStage();
+                            break;
+                        case 4:
+
+                            Thread backgroundThread = new Thread(new ThreadStart(Shutdown));
+                            backgroundThread.Start();
+                            break;
+                        case 5:
+                            await Search();
+                            break;
+                        case 6:
+                            await Topics();
+                            break;
+                        default:
+                            Console.WriteLine("\nInvalid Selection\n");
+                            break;
+                    }
                 }
+                catch
+                {
+                    Console.WriteLine("\nInvalid Selection\n");
+                }
+                
             }
 
 
@@ -114,6 +122,7 @@ namespace loadshedding
                             Console.WriteLine($"You have selected:\n Name: {message.areas[i].name}\n Region: {message.areas[i].region}\n");
                             Console.ForegroundColor = ConsoleColor.White;
                             WriteToFile(message.areas[i]);
+                            Todaydata = "";
                             break;
                         }
                         catch
