@@ -70,7 +70,7 @@ namespace loadshedding
 
 
         }
-        static string defaultFile = "default.txt";
+        static readonly string defaultFile = "default.txt";
         static string loctionID;
         public static async Task StartUp()
         {
@@ -281,13 +281,42 @@ namespace loadshedding
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine("There is no load shedding");
                 }
-                
+
+                SaveData(message.schedule, message.info.name.Replace(" ", "_"));
                 Console.ForegroundColor = ConsoleColor.White;
             }
             catch
             {
                 PrintError("Today");
             }
+        }
+        public static void SaveData(Schedule schedule,string location)
+        {
+            //store load shedding times one day you may need the data for AI training, predict future load shedding times
+            StreamWriter writer = new StreamWriter($"{DateTime.Now:dd_MM_yyy}_{location}.txt",true);
+            writer.WriteLine("Date~Name~Stage1~Stage2~Stage3~Stage4~Stage5~Stage6~Stage7~Stage8");
+            foreach (var item in schedule.days)
+            {
+                string line = $"{item.date}~{item.name}~";
+                string x = "";
+                for (int i = 0; i < 8; i++)
+                {
+                    if (item.stages[i].Length != 0)
+                    {
+                        for (int j = 0; j < item.stages[i].Length; j++)
+                        {
+                            x += $"{item.stages[i][j]},";
+                        }
+                    }
+                    else
+                        x += "NULL ";
+                    x = x.Substring(0, x.Length - 1) + "~";
+                }
+                line += x.Substring(0, x.Length - 1);
+                writer.WriteLine(line);
+
+            }
+            writer.Close();
 
         }
         static string Todaydata = "";
@@ -367,6 +396,8 @@ namespace loadshedding
                     //https://eskomsepush.gumroad.com/l/api
 
                     string token = "";
+
+                    
                     client.DefaultRequestHeaders.Add("token", token);
 
                     HttpResponseMessage response = await client.GetAsync(apiUrl);
