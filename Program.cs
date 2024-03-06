@@ -247,7 +247,7 @@ namespace loadshedding
                 {
                     foreach (var item in message.events)
                     {
-                        Console.WriteLine($"Event: {x}\nStage : {item.note}\n" +
+                        Console.WriteLine($"Event: {x}\n{item.note}\n" +
                             $"Date: {item.start:dddd d MMMM yyyy}\n" +
                             $"Start Time: {item.start:t}\n\n" +
                             $"End Time: {item.end:t}\n\n");
@@ -282,7 +282,7 @@ namespace loadshedding
                     Console.WriteLine("There is no load shedding");
                 }
 
-                SaveData(message.schedule, message.info.name.Replace(" ", "_"));
+                await SaveData(message, message.info.name.Replace(" ", "_"), message.events[0].note);
                 Console.ForegroundColor = ConsoleColor.White;
             }
             catch
@@ -290,14 +290,14 @@ namespace loadshedding
                 PrintError("Today");
             }
         }
-        public static void SaveData(Schedule schedule,string location)
+        public static Task SaveData(LoadsheddingEvents events, string location, string Stage)
         {
             //store load shedding times one day you may need the data for AI training, predict future load shedding times
-            StreamWriter writer = new StreamWriter($"{DateTime.Now:dd_MM_yyy}_{location}.txt",true);
-            writer.WriteLine("Date~Name~Stage1~Stage2~Stage3~Stage4~Stage5~Stage6~Stage7~Stage8");
-            foreach (var item in schedule.days)
+            StreamWriter writer = new StreamWriter($"{DateTime.Now:dd_MM_yyy}_{location}.txt", true);
+            writer.WriteLine("Date~Day~LoadSheddingDate~Stage~Stage1~Stage2~Stage3~Stage4~Stage5~Stage6~Stage7~Stage8");
+            foreach (var item in events.schedule.days)
             {
-                string line = $"{item.date}~{item.name}~";
+                string line = $"{item.date}~{item.name}~{events.events[0].start:yyyy-MM-dd}~{events.events[0].note}~";
                 string x = "";
                 for (int i = 0; i < 8; i++)
                 {
@@ -312,12 +312,17 @@ namespace loadshedding
                         x += "NULL ";
                     x = x.Substring(0, x.Length - 1) + "~";
                 }
-                line += x.Substring(0, x.Length - 1);
+                line +=  $"{x.Substring(0, x.Length - 1)}";
                 writer.WriteLine(line);
-
             }
             writer.Close();
+            //writer = new StreamWriter($"{DateTime.Now:dd_MM_yyy}_Stages",true);
+            //writer.WriteLine("DateCreated~LoadSheddingDate~Stage");
+            //writer.WriteLine($"{DateTime.Now:d}~{events.events[0].start:d}~{events.events[0].note}");
+            writer.Close();
+            Console.WriteLine("Done Writing Data");
 
+            return Task.CompletedTask;
         }
         static string Todaydata = "";
         public static async void Shutdown()
