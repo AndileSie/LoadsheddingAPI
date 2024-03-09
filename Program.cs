@@ -294,33 +294,47 @@ namespace loadshedding
         {
             //store load shedding times one day you may need the data for AI training, predict future load shedding times
             StreamWriter writer = new StreamWriter($"{DateTime.Now:dd_MM_yyy}_{location}.txt", true);
-            writer.WriteLine("Date~Day~LoadSheddingDate~Stage~Stage1~Stage2~Stage3~Stage4~Stage5~Stage6~Stage7~Stage8");
-            foreach (var item in events.schedule.days)
+
+            try
             {
-                string line = $"{item.date}~{item.name}~{events.events[0].start:yyyy-MM-dd}~{events.events[0].note}~";
-                string x = "";
-                for (int i = 0; i < 8; i++)
+                writer.WriteLine("Date~Day~LoadSheddingDate~Stage~Stage1~Stage2~Stage3~Stage4~Stage5~Stage6~Stage7~Stage8");
+                foreach (var item in events.schedule.days)
                 {
-                    if (item.stages[i].Length != 0)
+                    string line = $"{item.date}~{item.name}~{events.events[0].start:yyyy-MM-dd}~{events.events[0].note}~";
+                    string x = "";
+                    for (int i = 0; i < 8; i++)
                     {
-                        for (int j = 0; j < item.stages[i].Length; j++)
+                        if (item.stages[i].Length != 0)
                         {
-                            x += $"{item.stages[i][j]},";
+                            for (int j = 0; j < item.stages[i].Length; j++)
+                            {
+                                x += $"{item.stages[i][j]},";
+                            }
                         }
+                        else
+                            x += "NULL ";
+                        x = x.Substring(0, x.Length - 1) + "~";
                     }
-                    else
-                        x += "NULL ";
-                    x = x.Substring(0, x.Length - 1) + "~";
+                    line += $"{x.Substring(0, x.Length - 1)}";
+                    writer.WriteLine(line);
                 }
-                line +=  $"{x.Substring(0, x.Length - 1)}";
-                writer.WriteLine(line);
+                writer.Close();
+                Console.WriteLine("Done Writing Data");
             }
-            writer.Close();
+            catch
+            {
+                writer.Close();
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error while writing data to txt file.");
+                Console.ForegroundColor = ConsoleColor.White;
+
+            }
+
             //writer = new StreamWriter($"{DateTime.Now:dd_MM_yyy}_Stages",true);
             //writer.WriteLine("DateCreated~LoadSheddingDate~Stage");
             //writer.WriteLine($"{DateTime.Now:d}~{events.events[0].start:d}~{events.events[0].note}");
-            writer.Close();
-            Console.WriteLine("Done Writing Data");
+            //writer.Close();
+
 
             return Task.CompletedTask;
         }
@@ -373,9 +387,9 @@ namespace loadshedding
                             Thread.Sleep(1000);
                         }
 
-                        Process.Start("shutdown", "/s /t 2");
-                        //shutdown the system
                         Console.WriteLine("shutdown the system".ToUpperInvariant());
+                        //shutdown the system
+                        Process.Start("shutdown", "/s /t 2");
                     }
                     
                 }
@@ -401,8 +415,8 @@ namespace loadshedding
                     //https://eskomsepush.gumroad.com/l/api
 
                     string token = "";
-
                     
+
                     client.DefaultRequestHeaders.Add("token", token);
 
                     HttpResponseMessage response = await client.GetAsync(apiUrl);
